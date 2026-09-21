@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bookmarks</title>
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem("csb-theme");
+    if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+})();
+</script>
+<style>
+  :root {
+    --bg: #fff;
+    --side: #f7f7f7;
+    --hover: #eee;
+    --sel: #e8f0fe;
+    --sel-text: #174ea6;
+    --line: #dadce0;
+    --text: #202124;
+    --muted: #5f6368;
+    --url: #188038;
+    --star: #f9ab00;
+    --side-w: 280px;
+  }
+  html[data-theme="dark"] {
+    --bg: #292a2d;
+    --side: #202124;
+    --hover: #3c4043;
+    --sel: #394457;
+    --sel-text: #8ab4f8;
+    --line: #3c4043;
+    --text: #e8eaed;
+    --muted: #9aa0a6;
+    --url: #81c995;
+    --star: #fdd663;
+  }
+  html[data-theme="light"] {
+    --bg: #fff;
+    --side: #f7f7f7;
+    --hover: #eee;
+    --sel: #e8f0fe;
+    --sel-text: #174ea6;
+    --line: #dadce0;
+    --text: #202124;
+    --muted: #5f6368;
+    --url: #188038;
+    --star: #f9ab00;
+  }
+  @media (prefers-color-scheme: dark) {
+    html:not([data-theme]) {
+      --bg: #292a2d;
+      --side: #202124;
+      --hover: #3c4043;
+      --sel: #394457;
+      --sel-text: #8ab4f8;
+      --line: #3c4043;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --url: #81c995;
+      --star: #fdd663;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 13px/1.4 "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  .layout {
+    display: grid;
+    grid-template-columns: var(--side-w) 1fr;
+    height: 100vh;
+  }
+  .side {
+    background: var(--side);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .side-top {
+    padding: 12px 12px 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .side-top h1 {
+    margin: 0 0 8px;
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .side-top input {
+    width: 100%;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--bg);
+    outline: none;
+  }
+  .side-top input:focus { border-color: #8ab4f8; }
+  .folders {
+    flex: 1;
+    overflow: auto;
+    padding: 8px 0 16px;
+  }
+  .folder {
+    width: calc(100% - 8px);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px 7px 10px;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    color: var(--text);
+    border-radius: 0 16px 16px 0;
+  }
+  .folder:hover { background: var(--hover); }
+  .folder.on {
+    background: var(--sel);
+    color: var(--sel-text);
+  }
+  .folder svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+  .folder .label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .folder .n {
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .folder.on .n { color: inherit; opacity: 0.8; }
+  .sub {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 6px;
+  }
+  .sub button {
+    width: calc(100% - 8px);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px 5px 36px;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    color: var(--text);
+    border-radius: 0 16px 16px 0;
+  }
+  .sub button:hover { background: var(--hover); }
+  .sub button.on {
+    background: var(--sel);
+    color: var(--sel-text);
+  }
+  .sub .label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sub .n { color: var(--muted); font-size: 11px; }
+  .side-bot {
+    padding: 8px 12px;
+    border-top: 1px solid var(--line);
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .side-bot a { color: var(--muted); }
+
+  .main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .bar {
+    height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .bar h2 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bar .count { color: var(--muted); font-weight: 400; font-size: 12px; }
+  .bar button {
+    height: 28px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--bg);
+    color: var(--muted);
+  }
+  .bar button.on {
+    background: var(--sel);
+    border-color: transparent;
+    color: var(--sel-text);
+  }
+
+  .table-wrap { flex: 1; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bg);
+    text-align: left;
+    font-weight: 500;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: middle;
+  }
+  tr:hover td { background: var(--hover); }
+  .name-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 160px;
+  }
+  .name-cell img {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+  .name-cell a {
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .name-cell a:hover { text-decoration: underline; }
+  .blurb { color: var(--muted); }
+  .url a {
+    color: var(--url);
+    text-decoration: none;
+    font-size: 12px;
+  }
+  .url a:hover { text-decoration: underline; }
+  .kind {
+    font-size: 11px;
+    white-space: nowrap;
+    color: var(--muted);
+  }
+  .kind b {
+    font-weight: 500;
+    color: var(--text);
+  }
+  .bar select {
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--bg);
+    color: var(--muted);
+    outline: none;
+  }
+  .star {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 14px;
+    padding: 0 4px;
+  }
+  .star.on { color: var(--star); }
+  .empty {
+    padding: 48px 16px;
+    text-align: center;
+    color: var(--muted);
+  }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    .side { display: none; }
+    th:nth-child(3), td:nth-child(3),
+    th:nth-child(4), td:nth-child(4) { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="side">
+    <div class="side-top">
+      <h1>Bookmarks</h1>
+      <input id="q" type="search" placeholder="Search bookmarks" autocomplete="off" spellcheck="false">
+    </div>
+    <nav class="folders" id="folders"></nav>
+    <div class="side-bot">
+      <a href="https://github.com/Chick3nHawk01/Open_Source-CTI-Tooling" target="_blank" rel="noopener">Chick3nHawk01 / Open_Source-CTI-Tooling</a>
+    </div>
+  </aside>
+  <section class="main">
+    <div class="bar">
+      <h2 id="title">All bookmarks</h2>
+      <select id="kindFilter" title="Filter by how you use it" aria-label="Type filter">
+        <option value="all">All types</option>
+      </select>
+      <button type="button" id="themeBtn" title="Toggle light / dark">Light</button>
+      <button type="button" id="starredBtn">Starred</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:26%">Name</th>
+            <th>Description</th>
+            <th style="width:20%">URL</th>
+            <th style="width:88px">Use for</th>
+            <th style="width:36px"></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="empty" hidden>No bookmarks match.</div>
+    </div>
+  </section>
+</div>
+<script>
+const DATA = [{"name":"Operational","categories":[{"name":"National CERTs & Advisories","links":[{"name":"NCSC UK","url":"https://www.ncsc.gov.uk/section/keep-up-to-date/threat-reports","host":"ncsc.gov.uk","blurb":"Weekly Threat Reports"},{"name":"NCSC UK","url":"https://www.ncsc.gov.uk/section/keep-up-to-date/advisories","host":"ncsc.gov.uk","blurb":"Advisories & Joint Publications"},{"name":"CISA","url":"https://www.cisa.gov/news-events/cybersecurity-advisories","host":"cisa.gov","blurb":"Cybersecurity Advisories & Joint Reports"},{"name":"CISA","url":"https://www.cisa.gov/cyber-essentials","host":"cisa.gov","blurb":"Cyber Essentials Guide for Small Organisations"},{"name":"CISA KEV","url":"https://www.cisa.gov/known-exploited-vulnerabilities-catalog","host":"cisa.gov","blurb":"Vulnerabilities Confirmed as Exploited"},{"name":"ENISA","url":"https://www.enisa.europa.eu/topics/threat-risk-management","host":"enisa.europa.eu","blurb":"EU Threat & Risk Publications"},{"name":"CERT-FR","url":"https://www.cert.ssi.gouv.fr/","host":"cert.ssi.gouv.fr","blurb":"French National CERT Advisories"},{"name":"BSI","url":"https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Cyber-Sicherheitslage/Analysen-und-Prognosen/Threat-Intelligence/Aktive_APT-Gruppen/aktive-apt-gruppen_node.html","host":"bsi.bund.de","blurb":"APT Groups Actively Targeting Germany"},{"name":"ACSC","url":"https://www.cyber.gov.au/about-us/view-all-content/alerts-and-advisories","host":"cyber.gov.au","blurb":"Australian Alerts & Advisories"},{"name":"Canadian Centre for Cyber Security","url":"https://www.cyber.gc.ca/en/alerts-advisories","host":"cyber.gc.ca","blurb":"Alerts & Advisories"},{"name":"CERT NZ","url":"https://www.cert.govt.nz/","host":"cert.govt.nz","blurb":"New Zealand Advisories"},{"name":"FIRST","url":"https://www.first.org/members/teams/","host":"first.org","blurb":"Global CSIRT Team Directory"},{"name":"National Council of ISACs","url":"https://www.nationalisacs.org/member-isacs-3","host":"nationalisacs.org","blurb":"Sector ISAC Directory"},{"name":"ENISA","url":"https://www.enisa.europa.eu/topics/national-cyber-security-strategies/information-sharing/isacs-toolkit/view","host":"enisa.europa.eu","blurb":"Information Sharing and Analysis Centres Toolkit"},{"name":"MS-ISAC","url":"https://www.cisecurity.org/ms-isac/services/cyber-alerts-advisories","host":"cisecurity.org","blurb":"Cyber Alerts for Government Sector"}]},{"name":"Adversary Intelligence","links":[{"name":"MITRE ATT&CK Groups","url":"https://attack.mitre.org/groups/","host":"attack.mitre.org","blurb":"Actor Profiles Mapped to Techniques"},{"name":"CrowdStrike Adversary Universe","url":"https://adversary.crowdstrike.com/","host":"adversary.crowdstrike.com","blurb":"Actor Profiles by Nation & Motive"},{"name":"Secureworks","url":"https://www.secureworks.com/research/threat-profiles","host":"secureworks.com","blurb":"Threat Group Profiles & Alias Mapping"},{"name":"Dragos","url":"https://www.dragos.com/threat-activity-groups/","host":"dragos.com","blurb":"ICS/OT Threat Activity Groups"},{"name":"Kaspersky APT List","url":"https://apt.securelist.com/","host":"apt.securelist.com","blurb":"Actor & Campaign Index"},{"name":"ETDA","url":"https://apt.etda.or.th/cgi-bin/aptgroups.cgi","host":"apt.etda.or.th","blurb":"APT Group Naming & Alias Cross-Reference"},{"name":"Malpedia Actors","url":"https://malpedia.caad.fkie.fraunhofer.de/actors","host":"malpedia.caad.fkie.fraunhofer.de","blurb":"Actor Profiles with Linked Reporting"},{"name":"CFR","url":"https://www.cfr.org/cyber-operations/","host":"cfr.org","blurb":"State-Sponsored Cyber Operations Tracker"},{"name":"APT Map","url":"https://aptmap.netlify.app/","host":"aptmap.netlify.app","blurb":"Geographic Threat Actor Map"},{"name":"Russian APT Ecosystem","url":"https://apt-ecosystem.com/russia/map/","host":"apt-ecosystem.com","blurb":"Unit & Group Relationship Map"},{"name":"BushidoToken","url":"https://blog.bushidotoken.net/search/label/Tracking%20Adversaries","host":"blog.bushidotoken.net","blurb":"Tracking Adversaries Blog Series"},{"name":"GitHub - BushidoUK/Russian-APT-Tool-Matrix","url":"https://github.com/BushidoUK/Russian-APT-Tool-Matrix","host":"github.com","blurb":"Tooling Used by Russian APTs"},{"name":"GitHub - BushidoUK/Exploring-APT-campaigns","url":"https://github.com/BushidoUK/Exploring-APT-campaigns","host":"github.com","blurb":"Mapping APT Attacks"},{"name":"GitHub - StrangerealIntel/EternalLiberty","url":"https://github.com/StrangerealIntel/EternalLiberty","host":"github.com","blurb":"Adversary Moniker Cross-Reference"},{"name":"GitHub - CyberMonitor","url":"https://github.com/CyberMonitor/APT_CyberCriminal_Campagin_Collections","host":"github.com","blurb":"APT & Cybercriminal Campaign Collection"},{"name":"Intezer OST Map","url":"https://www.intezer.com/ost-map/","host":"intezer.com","blurb":"Open Source Tools Used by APTs"},{"name":"Lab52","url":"https://lab52.io/","host":"lab52.io","blurb":"APT Targeting Research"},{"name":"vx-underground","url":"https://vx-underground.org/samples/Families/APT/","host":"vx-underground.org","blurb":"APT Sample Archive"}]},{"name":"Ransomware Intelligence","links":[{"name":"Ransomware.live","url":"https://www.ransomware.live/","host":"ransomware.live","blurb":"Live Leak Site Victim Tracker & Last Claims"},{"name":"RansomWatch","url":"https://ransomwatch.telemetry.ltd/","host":"ransomwatch.telemetry.ltd","blurb":"Automated Leak Site Scraper"},{"name":"RansomLook","url":"https://www.ransomlook.io/","host":"ransomlook.io","blurb":"Leak Site & Actor Infrastructure Tracker"},{"name":"Ransom.wiki","url":"https://ransom.wiki/","host":"ransom.wiki","blurb":"Who's Been Ransomware'd Victim Index"},{"name":"GitHub - cert-orangecyberdefense/ransomware_map","url":"https://github.com/cert-orangecyberdefense/ransomware_map","host":"github.com","blurb":"OCD World Watch Ransomware Map"},{"name":"GitHub - BushidoUK/Ransomware-Tool-Matrix","url":"https://github.com/BushidoUK/Ransomware-Tool-Matrix","host":"github.com","blurb":"Tools Used by Ransomware Crews"},{"name":"GitHub - BushidoUK/Ransomware-Vulnerability-Matrix","url":"https://github.com/BushidoUK/Ransomware-Vulnerability-Matrix","host":"github.com","blurb":"CVEs Exploited by Ransomware"},{"name":"GitHub - BushidoUK/Ransomware-Leaks","url":"https://github.com/BushidoUK/Ransomware-Leaks","host":"github.com","blurb":"Internal Chat & Resource Leak Index"},{"name":"Virtual Routes","url":"https://virtual-routes.org/ransomware-countermeasures-tracker/","host":"virtual-routes.org","blurb":"Ransomware Countermeasure Tracker"},{"name":"ID Ransomware","url":"https://id-ransomware.malwarehunterteam.com/","host":"id-ransomware.malwarehunterteam.com","blurb":"Family Identification from Note or Sample"},{"name":"No More Ransom","url":"https://www.nomoreransom.org/","host":"nomoreransom.org","blurb":"Free Decryptor Repository"},{"name":"Ransomwhere","url":"https://ransomwhe.re/","host":"ransomwhe.re","blurb":"Ransomware Cryptocurrency Wallet Tracking"},{"name":"MalwareBazaar","url":"https://bazaar.abuse.ch/browse.php?search=tag%3Aransomware","host":"bazaar.abuse.ch","blurb":"Ransomware-Tagged Samples"},{"name":"Hatching Triage","url":"https://tria.ge/s?q=tag%3Aransomware","host":"tria.ge","blurb":"Ransomware-Tagged Sandbox Runs"},{"name":"CISA StopRansomware","url":"https://www.cisa.gov/stopransomware/newsroom","host":"cisa.gov","blurb":"Newsroom & Joint Advisories"},{"name":"NCSC UK","url":"https://www.ncsc.gov.uk/search?q=Ransomware&sort=date%2Bdesc&topics=Cyber+attack","host":"ncsc.gov.uk","blurb":"Ransomware Alert Search"},{"name":"Ransom Payment Legality","url":"https://rkovar.github.io/ransomwarelegality/","host":"rkovar.github.io","blurb":"Jurisdiction Reference"}]},{"name":"IoC Feeds & Sharing","links":[{"name":"abuse.ch","url":"https://abuse.ch/","host":"abuse.ch","blurb":"Well-curated IoC Lists"},{"name":"ThreatFox","url":"https://threatfox.abuse.ch/","host":"threatfox.abuse.ch","blurb":"Community IoC Exchange"},{"name":"URLhaus","url":"https://urlhaus.abuse.ch/","host":"urlhaus.abuse.ch","blurb":"Malware Distribution URL Feed"},{"name":"Feodo Tracker","url":"https://feodotracker.abuse.ch/","host":"feodotracker.abuse.ch","blurb":"Botnet C2 IP Blocklist"},{"name":"SSL Blacklist","url":"https://sslbl.abuse.ch/","host":"sslbl.abuse.ch","blurb":"Malicious JA3 & Certificate Fingerprints"},{"name":"abuse.ch Hunting","url":"https://hunting.abuse.ch/","host":"hunting.abuse.ch","blurb":"Cross-Platform IoC Query Interface"},{"name":"MISP","url":"https://www.misp-project.org/feeds/","host":"misp-project.org","blurb":"List of Default MISP Feeds"},{"name":"AlienVault OTX","url":"https://otx.alienvault.com/","host":"otx.alienvault.com","blurb":"All-purposes Threat Exchange"},{"name":"IBM X-Force Exchange","url":"https://exchange.xforce.ibmcloud.com/","host":"exchange.xforce.ibmcloud.com","blurb":"All-purposes Threat Exchange"},{"name":"Proofpoint Emerging Threats","url":"https://rules.emergingthreats.net/","host":"rules.emergingthreats.net","blurb":"IoCs & Rules"},{"name":"FireHOL","url":"http://iplists.firehol.org/","host":"iplists.firehol.org","blurb":"Collection of IoC Lists"},{"name":"CINS Army","url":"https://cinsarmy.com/","host":"cinsarmy.com","blurb":"Reputation-Scored IP Blocklist"},{"name":"InQuest Labs","url":"https://labs.inquest.net/iocdb","host":"labs.inquest.net","blurb":"IoC Database"},{"name":"Botvrij","url":"https://botvrij.eu/data/feed-osint/","host":"botvrij.eu","blurb":"OSINT IoC Feed for MISP"},{"name":"Tor Project","url":"https://check.torproject.org/torbulkexitlist","host":"check.torproject.org","blurb":"Bulk Exit Node List"},{"name":"Rapid7 Open Data","url":"https://opendata.rapid7.com/","host":"opendata.rapid7.com","blurb":"Up-to-Date DNS/HTTP/SSL Scan Data"},{"name":"GitHub - fate0/proxylist","url":"https://github.com/fate0/proxylist","host":"github.com","blurb":"List of Free, Open Proxy Servers"},{"name":"GitHub - BushidoUK/Open-Source-Threat-Intel-Feeds","url":"https://github.com/BushidoUK/Open-Source-Threat-Intel-Feeds","host":"github.com","blurb":"Free Feed Inventory"}]},{"name":"Situational Awareness & News","links":[{"name":"SANS Internet Storm Center","url":"https://isc.sans.edu/","host":"isc.sans.edu","blurb":"Daily Handler Diaries & Sensor Data"},{"name":"BleepingComputer","url":"https://www.bleepingcomputer.com/","host":"bleepingcomputer.com","blurb":"Breaking Incident & Ransomware Reporting"},{"name":"The Record","url":"https://therecord.media/","host":"therecord.media","blurb":"Cyber Policy & Incident Journalism"},{"name":"The Hacker News","url":"https://thehackernews.com/","host":"thehackernews.com","blurb":"Fast-Turnaround Security News"},{"name":"Krebs on Security","url":"https://krebsonsecurity.com/","host":"krebsonsecurity.com","blurb":"Cybercrime Investigative Journalism"},{"name":"DataBreaches.net","url":"https://www.databreaches.net/","host":"databreaches.net","blurb":"Breach Disclosure Tracking"},{"name":"ZDNet Security","url":"https://www.zdnet.com/topic/security/","host":"zdnet.com","blurb":"Cybersecurity News"},{"name":"Risky Business","url":"https://risky.biz/","host":"risky.biz","blurb":"Weekly Analyst Podcast & Newsletter"},{"name":"BushidoToken","url":"https://blog.bushidotoken.net/","host":"blog.bushidotoken.net","blurb":"Independent CTI Analysis Blog"}]},{"name":"Monthly Threat Reports","links":[{"name":"NCC Group","url":"https://www.nccgroup.com/research-blog/","host":"nccgroup.com","blurb":"Research Blog & Monthly Threat Pulse"},{"name":"Cyware","url":"https://cyware.com/resources/threat-briefings/monthly-threat-briefing/","host":"cyware.com","blurb":"Monthly Threat Briefing"},{"name":"Red Canary","url":"https://redcanary.com/blog/","host":"redcanary.com","blurb":"Intelligence Insights Series"},{"name":"Rewterz","url":"https://www.rewterz.com/monthly-threat-insights/","host":"rewterz.com","blurb":"Monthly Threat Insights"},{"name":"WithSecure","url":"https://www.withsecure.com/en/expertise/research-and-innovation/research/monthly-threat-highlights-report","host":"withsecure.com","blurb":"Monthly Threat Highlights"},{"name":"Kaspersky GReAT","url":"https://www.google.co.uk/search?q=site%3Asecurelist.com+%22APT+trends+report%22","host":"google.co.uk","blurb":"Quarterly APT Trends Report Search"}]}]},{"name":"Tactical","categories":[{"name":"Frameworks & Methodology","links":[{"name":"MITRE ATT&CK","url":"https://attack.mitre.org/matrices/enterprise/","host":"attack.mitre.org","blurb":"Enterprise Matrix - Adversary Tactics & Techniques"},{"name":"MITRE D3FEND","url":"https://d3fend.mitre.org/","host":"d3fend.mitre.org","blurb":"Defensive Countermeasure Ontology"},{"name":"MITRE CAR","url":"https://car.mitre.org/analytics/","host":"car.mitre.org","blurb":"Mapping of Detections to Techniques"},{"name":"MITRE CAPEC","url":"https://capec.mitre.org/index.html","host":"capec.mitre.org","blurb":"Attack Pattern Explanations"},{"name":"MITRE Engage","url":"https://engage.mitre.org/","host":"engage.mitre.org","blurb":"Denial & Deception Planning Framework"},{"name":"ATT&CK Navigator","url":"https://mitre-attack.github.io/attack-navigator/","host":"mitre-attack.github.io","blurb":"Technique Coverage & Heatmapping"},{"name":"DeTT&CT","url":"https://github.com/rabobank-cdc/DeTTECT","host":"github.com","blurb":"Detect Tactics, Techniques & Combat Threats"},{"name":"Diamond Model","url":"https://www.activeresponse.org/the-diamond-model/","host":"activeresponse.org","blurb":"Intrusion Analysis Methodology Paper"},{"name":"Lockheed Martin","url":"https://www.lockheedmartin.com/en-us/capabilities/cyber/cyber-kill-chain.html","host":"lockheedmartin.com","blurb":"Cyber Kill Chain Reference"},{"name":"GitHub - curated-intel/CTI-fundamentals","url":"https://github.com/curated-intel/CTI-fundamentals","host":"github.com","blurb":"Core CTI Concepts & Frameworks"},{"name":"Center for Threat-Informed Defense","url":"https://center-for-threat-informed-defense.github.io/","host":"center-for-threat-informed-defense.github.io","blurb":"Applied ATT&CK Research"},{"name":"GitHub - rung/threat-matrix-cicd","url":"https://github.com/rung/threat-matrix-cicd","host":"github.com","blurb":"Threat Matrix for CI/CD Pipelines"},{"name":"VERIS Framework","url":"https://verisframework.org/","host":"verisframework.org","blurb":"Incident Taxonomy & Documentation"}]},{"name":"Detection Engineering","links":[{"name":"SigmaHQ","url":"https://sigmahq.io/","host":"sigmahq.io","blurb":"Generic SIEM Signature Format"},{"name":"GitHub - SigmaHQ/sigma","url":"https://github.com/SigmaHQ/sigma","host":"github.com","blurb":"Community Sigma Rule Repository"},{"name":"GitHub - Neo23x0/signature-base","url":"https://github.com/Neo23x0/signature-base","host":"github.com","blurb":"Florian Roth YARA & IoC Signatures"},{"name":"GitHub - Yara-Rules/rules","url":"https://github.com/Yara-Rules/rules","host":"github.com","blurb":"Community YARA Rule Collection"},{"name":"GitHub - elastic/detection-rules","url":"https://github.com/elastic/detection-rules","host":"github.com","blurb":"Rules from & for Elastic Security"},{"name":"Splunk Security Content","url":"https://research.splunk.com/detections/","host":"research.splunk.com","blurb":"Splunk Detection Rules"},{"name":"SOC Prime TDM","url":"https://tdm.socprime.com/","host":"tdm.socprime.com","blurb":"SIEM Use Case Marketplace"},{"name":"Atomic Red Team","url":"https://atomicredteam.io/","host":"atomicredteam.io","blurb":"Technique Tests for Detection Validation"},{"name":"Suricata","url":"https://suricata.io/","host":"suricata.io","blurb":"Network IDS/IPS Engine & Rule Syntax"},{"name":"YARA Docs","url":"https://yara.readthedocs.io/","host":"yara.readthedocs.io","blurb":"Rule Syntax Reference"},{"name":"MaGMa","url":"https://www.betaalvereniging.nl/en/safety/magma/","host":"betaalvereniging.nl","blurb":"SIEM Use Case Documentation & Evaluation"},{"name":"Canarytokens","url":"https://canarytokens.org/generate","host":"canarytokens.org","blurb":"Tokens to Alert on Resource Access"},{"name":"GitHub - nsacyber/Event-Forwarding-Guidance","url":"https://github.com/nsacyber/Event-Forwarding-Guidance","host":"github.com","blurb":"Windows Event Log Collection Guidance"}]},{"name":"Threat Hunting","links":[{"name":"Threat Hunter Playbook","url":"https://threathunterplaybook.com/intro.html","host":"threathunterplaybook.com","blurb":"Hypothesis-Driven Hunt Library"},{"name":"GitHub - ThreatHuntingProject","url":"https://github.com/ThreatHuntingProject/ThreatHunting","host":"github.com","blurb":"General Threat Hunting Info"},{"name":"GitHub - 0x4D31/awesome-threat-detection","url":"https://github.com/0x4D31/awesome-threat-detection","host":"github.com","blurb":"Detection & Hunting Resources"},{"name":"GitHub - A3sal0n/CyberThreatHunting","url":"https://github.com/A3sal0n/CyberThreatHunting","host":"github.com","blurb":"Hunt Resource Collection"},{"name":"RITA","url":"https://github.com/activecm/rita","host":"github.com","blurb":"Beaconing & C2 Detection from Network Traffic"},{"name":"Zeek","url":"https://zeek.org/","host":"zeek.org","blurb":"Network Security Monitoring & Protocol Logging"},{"name":"s0cm0nkey","url":"https://s0cm0nkey.gitbook.io/s0cm0nkeys-security-reference-guide/blue-defense/threat-hunting","host":"s0cm0nkey.gitbook.io","blurb":"Threat Hunting Reference Guide"},{"name":"Anomaly.io","url":"https://anomaly.io/anomaly-detection-normal-distribution/","host":"anomaly.io","blurb":"Statistical Anomaly Detection Explained"}]},{"name":"TTP & Technique References","links":[{"name":"LOLBAS","url":"https://lolbas-project.github.io/","host":"lolbas-project.github.io","blurb":"Living Off The Land Windows Binaries"},{"name":"GTFOBins","url":"https://gtfobins.github.io/","host":"gtfobins.github.io","blurb":"Unix Binaries Abused for Privilege Escalation"},{"name":"LOLDrivers","url":"https://loldrivers.io/","host":"loldrivers.io","blurb":"Vulnerable & Malicious Driver Database"},{"name":"LOOBins","url":"https://www.loobins.io/","host":"loobins.io","blurb":"macOS Binaries Abused by Attackers"},{"name":"LOTS Project","url":"https://lots-project.com/","host":"lots-project.com","blurb":"Living Off Trusted Sites (Domains Used for Cover)"},{"name":"Hijack Libs","url":"https://hijacklibs.net/","host":"hijacklibs.net","blurb":"Known DLL Sideloading Libraries"},{"name":"Wietze's Blog","url":"https://www.wietzebeukema.nl/blog/hijacking-dlls-in-windows","host":"wietzebeukema.nl","blurb":"DLL Hijacking Techniques in Windows"},{"name":"MalAPI.io","url":"https://malapi.io/","host":"malapi.io","blurb":"Windows APIs used by attackers"},{"name":"Filesec.io","url":"https://filesec.io/","host":"filesec.io","blurb":"File extensions used by attackers"},{"name":"WTFBins","url":"https://wtfbins.wtf/","host":"wtfbins.wtf","blurb":"Benign binaries with malware-like behavior"},{"name":"JPCERT","url":"https://jpcertcc.github.io/ToolAnalysisResultSheet/","host":"jpcertcc.github.io","blurb":"Mapping of Log Events to Techniques & Tools"},{"name":"Stealthbits Attack Catalog","url":"https://attack.stealthbits.com/","host":"attack.stealthbits.com","blurb":"Credential Theft Technique Detail"},{"name":"GitHub - baderj/domain_generation_algorithms","url":"https://github.com/baderj/domain_generation_algorithms","host":"github.com","blurb":"Known Domain Generation Algorithms"}]},{"name":"Exploitation & Offensive Technique References","links":[{"name":"Packet Storm","url":"https://packetstormsecurity.com/","host":"packetstormsecurity.com","blurb":"Exploits, Tools & Advisories"},{"name":"shell-storm","url":"http://shell-storm.org/shellcode/","host":"shell-storm.org","blurb":"Shellcode Database"},{"name":"XSS Payloads","url":"http://www.xss-payloads.com/","host":"xss-payloads.com","blurb":"XSS Payload Library"},{"name":"Pentestmonkey","url":"http://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet","host":"pentestmonkey.net","blurb":"Reverse Shell Cheat Sheet"},{"name":"GitHub - swisskyrepo/PayloadsAllTheThings","url":"https://github.com/swisskyrepo/PayloadsAllTheThings","host":"github.com","blurb":"Payloads & Bypasses for Web Apps"},{"name":"GitHub - wisec/domxsswiki","url":"https://github.com/wisec/domxsswiki/wiki/Sinks","host":"github.com","blurb":"Code Execution Sinks in Web Apps"},{"name":"GitHub - carlospolop/hacktricks","url":"https://github.com/carlospolop/hacktricks","host":"github.com","blurb":"Technique Take-Aways from CTFs"},{"name":"GitHub - LasCC/Hack-Tools","url":"https://github.com/LasCC/Hack-Tools","host":"github.com","blurb":"All-in-One Web Pentest Browser Extension"}]},{"name":"Datasets & Adversary Emulation Logs","links":[{"name":"GitHub - mitre/brawl-public-game-001","url":"https://github.com/mitre/brawl-public-game-001","host":"github.com","blurb":"Log Data from Automated Adversary Emulation"},{"name":"GitHub - hunters-forge/mordor","url":"https://github.com/hunters-forge/mordor","host":"github.com","blurb":"Adversarial Technique Replay Logs"},{"name":"GitHub - SecLists","url":"https://github.com/danielmiessler/SecLists/blob/master/Passwords/Default-Credentials/default-passwords.csv","host":"github.com","blurb":"Default Passwords List"},{"name":"SecRepo","url":"http://www.secrepo.com/","host":"secrepo.com","blurb":"Diverse Collection of Security Datasets"},{"name":"endoflife.date","url":"https://endoflife.date/","host":"endoflife.date","blurb":"EOL Dates for Software & OS Versions"}]},{"name":"Vendor Threat Research","links":[{"name":"Malpedia","url":"https://malpedia.caad.fkie.fraunhofer.de/","host":"malpedia.caad.fkie.fraunhofer.de","blurb":"Malware Family & Threat Actor Library"},{"name":"Unit 42","url":"https://unit42.paloaltonetworks.com/","host":"unit42.paloaltonetworks.com","blurb":"Palo Alto Threat Research"},{"name":"Cisco Talos","url":"https://blog.talosintelligence.com/","host":"blog.talosintelligence.com","blurb":"Malware & Campaign Analysis"},{"name":"Securelist","url":"https://securelist.com/","host":"securelist.com","blurb":"Kaspersky APT & Malware Research"},{"name":"Microsoft Threat Intelligence","url":"https://www.microsoft.com/en-us/security/blog/topic/threat-intelligence/","host":"microsoft.com","blurb":"Actor Reporting & Hunting Queries"},{"name":"Google Threat Intelligence","url":"https://cloud.google.com/blog/topics/threat-intelligence","host":"cloud.google.com","blurb":"Mandiant Incident & Actor Research"},{"name":"CrowdStrike","url":"https://www.crowdstrike.com/en-us/blog/category/threat-intel-research/","host":"crowdstrike.com","blurb":"Adversary Research Blog"},{"name":"Check Point Research","url":"https://research.checkpoint.com/","host":"research.checkpoint.com","blurb":"Malware & Vulnerability Analysis"},{"name":"Proofpoint","url":"https://www.proofpoint.com/us/blog/threat-insight","host":"proofpoint.com","blurb":"Email Threat & Actor Tracking"},{"name":"SentinelLabs","url":"https://www.sentinelone.com/labs/","host":"sentinelone.com","blurb":"Reverse Engineering & Actor Research"},{"name":"WeLiveSecurity","url":"https://www.welivesecurity.com/","host":"welivesecurity.com","blurb":"ESET Research & APT Reporting"},{"name":"Virus Bulletin","url":"https://www.virusbulletin.com/","host":"virusbulletin.com","blurb":"Conference Papers & Technical Archive"},{"name":"ORKL","url":"https://orkl.eu/","host":"orkl.eu","blurb":"Searchable Threat Report Library"},{"name":"GitHub - aptnotes/data","url":"https://github.com/aptnotes/data","host":"github.com","blurb":"Historic APT Report Index"}]}]},{"name":"Strategic","categories":[{"name":"Annual & Landscape Reports","links":[{"name":"Verizon DBIR","url":"https://www.verizon.com/business/resources/reports/dbir/","host":"verizon.com","blurb":"Incident Pattern Statistics by Sector"},{"name":"ENISA Threat Landscape","url":"https://www.enisa.europa.eu/topics/threat-risk-management/threats-and-trends","host":"enisa.europa.eu","blurb":"EU-Wide Annual Threat Assessment"},{"name":"NCSC Annual Review","url":"https://www.ncsc.gov.uk/collection/annual-review","host":"ncsc.gov.uk","blurb":"UK National Threat Picture"},{"name":"CrowdStrike Global Threat Report","url":"https://www.crowdstrike.com/en-us/global-threat-report/","host":"crowdstrike.com","blurb":"Breakout Times & Actor Trends"},{"name":"Mandiant M-Trends","url":"https://cloud.google.com/security/resources/m-trends","host":"cloud.google.com","blurb":"Dwell Time & Intrusion Trend Data"},{"name":"IBM X-Force Index","url":"https://www.ibm.com/reports/threat-intelligence","host":"ibm.com","blurb":"Initial Access & Attack Type Trends"},{"name":"IBM Cost of a Data Breach","url":"https://www.ibm.com/reports/data-breach","host":"ibm.com","blurb":"Financial Impact Benchmarking"},{"name":"Microsoft Digital Defense Report","url":"https://www.microsoft.com/en-us/security/security-insider/microsoft-digital-defense-report","host":"microsoft.com","blurb":"Nation-State & Cybercrime Telemetry"},{"name":"UK Cyber Security Breaches Survey","url":"https://www.gov.uk/government/collections/cyber-security-breaches-survey","host":"gov.uk","blurb":"National Victimisation Statistics"},{"name":"WEF Cybersecurity Outlook","url":"https://www.weforum.org/publications/global-cybersecurity-outlook-2025/","host":"weforum.org","blurb":"Executive-Level Risk Framing"}]},{"name":"Geopolitics & Policy","links":[{"name":"CSIS","url":"https://www.csis.org/programs/strategic-technologies-program/cybersecurity-and-technology","host":"csis.org","blurb":"Cyber Policy & Significant Incident Tracking"},{"name":"Carnegie Endowment","url":"https://carnegieendowment.org/programs/technology-and-international-affairs","host":"carnegieendowment.org","blurb":"Cyber Norms & International Affairs"},{"name":"Atlantic Council DFRLab","url":"https://www.atlanticcouncil.org/programs/digital-forensic-research-lab/","host":"atlanticcouncil.org","blurb":"Influence Operations Research"},{"name":"Chatham House","url":"https://www.chathamhouse.org/topics/cybersecurity","host":"chathamhouse.org","blurb":"Cyber Security Policy Analysis"},{"name":"RUSI","url":"https://www.rusi.org/explore-our-research/research-groups/cyber","host":"rusi.org","blurb":"UK Cyber Threat & Defence Research"},{"name":"IISS","url":"https://www.iiss.org/research/cyber-space-and-futures-conflict/","host":"iiss.org","blurb":"Cyber Power & Future Conflict Assessments"},{"name":"Lawfare","url":"https://www.lawfaremedia.org/","host":"lawfaremedia.org","blurb":"Cyber Law, Attribution & Deterrence Commentary"},{"name":"CCDCOE Cyber Law Toolkit","url":"https://cyberlaw.ccdcoe.org/","host":"cyberlaw.ccdcoe.org","blurb":"Legal Analysis of Cyber Scenarios"},{"name":"xorl","url":"https://xorl.wordpress.com/2021/04/16/russias-cyber-operations-groups/","host":"xorl.wordpress.com","blurb":"Structure of Russian Cyber Operations Units"},{"name":"xorl","url":"https://xorl.wordpress.com/2021/04/20/chinese-cyber-operations-groups/","host":"xorl.wordpress.com","blurb":"Structure of Chinese Cyber Operations Units"},{"name":"xorl","url":"https://xorl.wordpress.com/2021/04/24/north-korea-dprk-cyber-operations-groups/","host":"xorl.wordpress.com","blurb":"Structure of DPRK Cyber Operations Units"},{"name":"OFAC","url":"https://ofac.treasury.gov/recent-actions","host":"ofac.treasury.gov","blurb":"Recent Sanctions Actions & Designations"},{"name":"UK Sanctions List","url":"https://www.gov.uk/government/collections/uk-sanctions-list","host":"gov.uk","blurb":"Designated Entities & Individuals"}]},{"name":"Risk, Governance & Standards","links":[{"name":"NIST CSF","url":"https://www.nist.gov/cyberframework","host":"nist.gov","blurb":"Risk Management Framework Reference"},{"name":"NIST","url":"https://csrc.nist.gov/publications/search?viewMode-lg=brief&ipp-lg=ALL&status-lg=Final&series-lg=NISTIR","host":"csrc.nist.gov","blurb":"NISTIR Standards & Frameworks Search"},{"name":"CIS","url":"https://www.cisecurity.org/controls/cis-controls-list","host":"cisecurity.org","blurb":"Top 20 Critical Security Controls"},{"name":"PCI SSC","url":"https://www.pcisecuritystandards.org/document_library","host":"pcisecuritystandards.org","blurb":"PCI DSS Document Library"},{"name":"ISO 27001","url":"https://hightable.io/iso-27001-controls/","host":"hightable.io","blurb":"Full Controls List"},{"name":"ACSC","url":"https://www.cyber.gov.au/resources-business-and-government/essential-cyber-security/essential-eight","host":"cyber.gov.au","blurb":"Essential Eight Mitigations"},{"name":"BSI","url":"https://www.bsi.bund.de/EN/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/IT-Grundschutz/it-grundschutz_node.html","host":"bsi.bund.de","blurb":"IT-Grundschutz Systemic Basis for Information Security"},{"name":"OWASP","url":"https://owasp.org/www-project-top-ten/","host":"owasp.org","blurb":"Top 10 Web Application Security Risks"},{"name":"OWASP","url":"https://owasp.org/www-project-security-knowledge-framework/","host":"owasp.org","blurb":"Security Knowledge Framework"},{"name":"NCSC CAF","url":"https://www.ncsc.gov.uk/collection/cyber-assessment-framework","host":"ncsc.gov.uk","blurb":"Assessment Framework for Essential Services"},{"name":"NCSC Board Toolkit","url":"https://www.ncsc.gov.uk/collection/board-toolkit","host":"ncsc.gov.uk","blurb":"Framing Cyber Risk for Senior Management"},{"name":"FAIR Institute","url":"https://www.fairinstitute.org/","host":"fairinstitute.org","blurb":"Quantified Cyber Risk Methodology"},{"name":"CREST","url":"https://www.crest-approved.org/","host":"crest-approved.org","blurb":"Certification Bodies & Threat Intelligence Standards"},{"name":"FIRST CTI SIG","url":"https://www.first.org/global/sigs/cti/","host":"first.org","blurb":"CTI Capability Framework & Curriculum"},{"name":"OASIS","url":"https://oasis-open.github.io/cti-documentation/","host":"oasis-open.github.io","blurb":"STIX & TAXII Documentation"},{"name":"TIBER-EU","url":"https://www.ecb.europa.eu/pub/pdf/annex/ecb.tiber_targeted_threat_intelligence_report_guidance_2025.en.pdf","host":"ecb.europa.eu","blurb":"Targeted Threat Intelligence Report Guidance"},{"name":"NVISO Labs","url":"https://blog.nviso.eu/2025/02/14/whats-new-for-tiber-eu/","host":"blog.nviso.eu","blurb":"What's New for TIBER-EU?"}]}]},{"name":"Tools","categories":[{"name":"IP, URL & Domain Analysis","links":[{"name":"VirusTotal","url":"https://www.virustotal.com/","host":"virustotal.com","blurb":"All-purpose IoC Reputation Lookup"},{"name":"CyberGordon","url":"https://cybergordon.com/","host":"cybergordon.com","blurb":"Batch Domain/IP Lookup Across Many Sources"},{"name":"urlscan.io","url":"https://urlscan.io/","host":"urlscan.io","blurb":"URL Scanner"},{"name":"AbuseIPDB","url":"https://www.abuseipdb.com/","host":"abuseipdb.com","blurb":"IP or /24 Subnet Abuse Reports"},{"name":"IPVoid","url":"https://www.ipvoid.com/","host":"ipvoid.com","blurb":"All-purposes IP/Domain Lookups"},{"name":"URLVoid","url":"https://www.urlvoid.com/","host":"urlvoid.com","blurb":"Website Reputation Checker"},{"name":"InQuest Labs","url":"https://labs.inquest.net/repdb","host":"labs.inquest.net","blurb":"Domain Reputation Database"},{"name":"GreyNoise","url":"https://viz.greynoise.io/","host":"viz.greynoise.io","blurb":"Internet Background Noise Triage"},{"name":"Pulsedive","url":"https://pulsedive.com/analyze","host":"pulsedive.com","blurb":"Free Enrichment & Risk Scoring"},{"name":"Kaspersky OpenTIP","url":"https://opentip.kaspersky.com/","host":"opentip.kaspersky.com","blurb":"Free IoC Verdict Lookup"},{"name":"ThreatMiner","url":"https://www.threatminer.org/index.php","host":"threatminer.org","blurb":"IoC and APT Note Data Mining"},{"name":"Criminal IP","url":"https://www.criminalip.io/","host":"criminalip.io","blurb":"Attack Surface & IP Intelligence"},{"name":"Cisco Talos","url":"https://www.talosintelligence.com/reputation_center","host":"talosintelligence.com","blurb":"Reputation Lookups"},{"name":"Palo Alto URL Filtering","url":"https://urlfiltering.paloaltonetworks.com/query/","host":"urlfiltering.paloaltonetworks.com","blurb":"Firewall Category Lookup"},{"name":"Spamhaus","url":"https://check.spamhaus.org/","host":"check.spamhaus.org","blurb":"Blocklist Check"},{"name":"ScamAdviser","url":"https://www.scamadviser.com/","host":"scamadviser.com","blurb":"Scam & Fraudulent Site Database"},{"name":"IPQualityScore","url":"https://www.ipqualityscore.com/","host":"ipqualityscore.com","blurb":"Proxy, VPN & Bot Detection"},{"name":"Cloudflare Radar","url":"https://radar.cloudflare.com/scan","host":"radar.cloudflare.com","blurb":"URL Scanner"},{"name":"Google Safe Browsing","url":"https://transparencyreport.google.com/safe-browsing/search","host":"transparencyreport.google.com","blurb":"URL Safety Lookup"},{"name":"Unfurl","url":"https://unfurl.link/","host":"unfurl.link","blurb":"URL Structure & Parameter Breakdown"},{"name":"Redirect Detective","url":"https://redirectdetective.com/","host":"redirectdetective.com","blurb":"Redirect Chain Tracing"},{"name":"Wannabrowser","url":"https://www.wannabrowser.net/","host":"wannabrowser.net","blurb":"Safe Remote Page Rendering"},{"name":"IPinfo","url":"https://ipinfo.io/","host":"ipinfo.io","blurb":"All-purpose IP Lookup"},{"name":"InfoByIP","url":"https://www.infobyip.com/ipbulklookup.php","host":"infobyip.com","blurb":"Bulk IP Geolocation Lookup"},{"name":"CentralOps","url":"https://centralops.net/co/","host":"centralops.net","blurb":"IP/Domain Owner & Network Lookup"},{"name":"Hurricane Electric","url":"https://bgp.he.net/","host":"bgp.he.net","blurb":"ASN & BGP Toolkit"},{"name":"bgp.tools","url":"https://bgp.tools/","host":"bgp.tools","blurb":"ASN Ownership & Prefix Lookups"},{"name":"RIPE Database","url":"https://apps.db.ripe.net/db-web-ui/query","host":"apps.db.ripe.net","blurb":"Whois Database"},{"name":"CDN Finder","url":"https://www.cdnplanet.com/tools/cdnfinder","host":"cdnplanet.com","blurb":"Identify Which CDNs a Website Uses"},{"name":"GitHub - m0rtem/CloudFail","url":"https://github.com/m0rtem/CloudFail","host":"github.com","blurb":"Unmask IPs Hidden Behind Cloudflare"}]},{"name":"DNS & Infrastructure Pivoting","links":[{"name":"SecurityTrails","url":"https://securitytrails.com/","host":"securitytrails.com","blurb":"Historical DNS & Whois Pivoting"},{"name":"mnemonic","url":"https://passivedns.mnemonic.no/","host":"passivedns.mnemonic.no","blurb":"Passive DNS Lookups"},{"name":"Validin","url":"https://validin.com/","host":"validin.com","blurb":"Free Passive DNS & Host Pivoting"},{"name":"Silent Push","url":"https://explore.silentpush.com/","host":"explore.silentpush.com","blurb":"Infrastructure Fingerprint Pivoting"},{"name":"DNSdumpster","url":"https://dnsdumpster.com/","host":"dnsdumpster.com","blurb":"Subdomain & DNS Recon"},{"name":"DNSlytics","url":"https://search.dnslytics.com/","host":"search.dnslytics.com","blurb":"All-purposes IP/Domain Lookups"},{"name":"ViewDNS.info","url":"https://viewdns.info/","host":"viewdns.info","blurb":"Reverse DNS, IP & Whois Toolkit"},{"name":"Robtex","url":"https://www.robtex.com/","host":"robtex.com","blurb":"Combined DNS & Network Relationship View"},{"name":"DomainTools","url":"https://whois.domaintools.com/","host":"whois.domaintools.com","blurb":"Whois Lookups"},{"name":"Who.is","url":"https://who.is/","host":"who.is","blurb":"Whois Lookups"},{"name":"Whoxy","url":"https://www.whoxy.com/","host":"whoxy.com","blurb":"Reverse & Historical Whois"},{"name":"crt.sh","url":"https://crt.sh/","host":"crt.sh","blurb":"Certificate Search"},{"name":"Cali Dog Security","url":"https://calidog.io/","host":"calidog.io","blurb":"Real-Time Certificate Transparency Log"},{"name":"Qualys SSLLabs","url":"https://www.ssllabs.com/ssltest/","host":"ssllabs.com","blurb":"SSL/Certificate Security Tester"},{"name":"dnstwister","url":"https://dnstwister.report/","host":"dnstwister.report","blurb":"Typosquat Monitoring for Brand Domains"},{"name":"GitHub - elceef/dnstwist","url":"https://github.com/elceef/dnstwist","host":"github.com","blurb":"Domain Permutation Generator"},{"name":"WhoisDS","url":"https://whoisds.com/newly-registered-domains","host":"whoisds.com","blurb":"Daily Newly Registered Domain Lists"},{"name":"Public Suffix List","url":"https://publicsuffix.org/list/","host":"publicsuffix.org","blurb":"Public Domain Suffixes"}]},{"name":"File & Malware Analysis","links":[{"name":"MalwareBazaar","url":"https://bazaar.abuse.ch/","host":"bazaar.abuse.ch","blurb":"Malware Sample Exchange"},{"name":"any.run","url":"https://app.any.run/","host":"app.any.run","blurb":"Interactive Malware Sandbox"},{"name":"Hatching Triage","url":"https://tria.ge/","host":"tria.ge","blurb":"Automated Malware Sandbox"},{"name":"Hybrid Analysis","url":"https://www.hybrid-analysis.com/","host":"hybrid-analysis.com","blurb":"Automated Malware Analysis"},{"name":"Joe Sandbox","url":"https://www.joesandbox.com/","host":"joesandbox.com","blurb":"Automated Malware Analysis"},{"name":"Filescan.io","url":"https://www.filescan.io/","host":"filescan.io","blurb":"Static & Emulated File Analysis"},{"name":"Intezer","url":"https://analyze.intezer.com/","host":"analyze.intezer.com","blurb":"Code Reuse & Family Attribution"},{"name":"MetaDefender","url":"https://metadefender.opswat.com/","host":"metadefender.opswat.com","blurb":"Multi-Engine File Scanner"},{"name":"InQuest Labs","url":"https://labs.inquest.net/dfi","host":"labs.inquest.net","blurb":"Automated Deep File Inspection"},{"name":"PolySwarm","url":"https://polyswarm.io/","host":"polyswarm.io","blurb":"Crowdsourced Multi-Engine Scanning"},{"name":"CyberChef","url":"https://gchq.github.io/CyberChef/","host":"gchq.github.io","blurb":"Encoding, Decoding & Deobfuscation"},{"name":"MalShare","url":"https://www.malshare.com/","host":"malshare.com","blurb":"Malware Sample Repository"},{"name":"vx-underground","url":"https://www.vx-underground.org/","host":"vx-underground.org","blurb":"Malware Sample & Paper Repository"},{"name":"Malware-Traffic-Analysis","url":"https://www.malware-traffic-analysis.net/","host":"malware-traffic-analysis.net","blurb":"Malware Traffic PCAPs"},{"name":"Koodous","url":"https://koodous.com/","host":"koodous.com","blurb":"Android APK Malware Analysis & Hunting"},{"name":"REMnux","url":"https://remnux.org/","host":"remnux.org","blurb":"Reverse Engineering Linux Distribution"},{"name":"Ghidra","url":"https://ghidra-sre.org/","host":"ghidra-sre.org","blurb":"Open Source Disassembler & Decompiler"},{"name":"PEStudio","url":"https://www.winitor.com/","host":"winitor.com","blurb":"Static PE Triage & Indicator Flagging"},{"name":"GitHub - PrismInfosecLabs/PRIMAL","url":"https://github.com/PrismInfosecLabs/PRIMAL/tree/release","host":"github.com","blurb":"Prism Infosec Malware Analysis Lab"},{"name":"Checkpoint CPR","url":"https://anti-debug.checkpoint.com/","host":"anti-debug.checkpoint.com","blurb":"Anti-Debug Trick Reference"}]},{"name":"Phishing & Email Analysis","links":[{"name":"PhishTank","url":"https://www.phishtank.com/index.php","host":"phishtank.com","blurb":"Phishing URL tracker"},{"name":"OpenPhish","url":"https://openphish.com/","host":"openphish.com","blurb":"Live Phishing URL Feed"},{"name":"Phishunt.io","url":"https://phishunt.io/","host":"phishunt.io","blurb":"Suspicious Phishing Kit Hunting"},{"name":"PhishTool","url":"https://www.phishtool.com/","host":"phishtool.com","blurb":"Email Header & Artefact Triage Platform"},{"name":"Message Header Analyzer","url":"https://mha.azurewebsites.net/","host":"mha.azurewebsites.net","blurb":"SMTP Hop & Delay Parsing"},{"name":"MXToolbox","url":"https://mxtoolbox.com/SuperTool.aspx","host":"mxtoolbox.com","blurb":"Email Security Swiss Army Knife"},{"name":"dmarcian","url":"https://dmarcian.com/dmarc-inspector/","host":"dmarcian.com","blurb":"SPF, DKIM & DMARC Record Inspection"},{"name":"EmailRep.io","url":"https://emailrep.io/","host":"emailrep.io","blurb":"Sender Address Reputation"},{"name":"GitHub - emalderson/ThePhish","url":"https://github.com/emalderson/ThePhish","host":"github.com","blurb":"Automated Phishing Triage"}]},{"name":"Vulnerability & Exploit Intelligence","links":[{"name":"NVD","url":"https://nvd.nist.gov/","host":"nvd.nist.gov","blurb":"CVE Records with CVSS & CPE Data"},{"name":"CVE Program","url":"https://www.cve.org/","host":"cve.org","blurb":"Authoritative CVE Records"},{"name":"MITRE CWE","url":"http://cwe.mitre.org/","host":"cwe.mitre.org","blurb":"Common Weakness Enumeration"},{"name":"Microsoft","url":"https://msrc.microsoft.com/update-guide","host":"msrc.microsoft.com","blurb":"Security Update Guide"},{"name":"EPSS","url":"https://www.first.org/epss/","host":"first.org","blurb":"Probability of Exploitation Scoring"},{"name":"Exploit-DB","url":"https://www.exploit-db.com/","host":"exploit-db.com","blurb":"Public Exploit Code Archive"},{"name":"Vulners","url":"https://vulners.com/","host":"vulners.com","blurb":"Aggregated Vulnerability & Exploit Search"},{"name":"VulDB","url":"https://vuldb.com/","host":"vuldb.com","blurb":"Vulnerability Database with Exploit Pricing"},{"name":"OSV","url":"https://osv.dev/","host":"osv.dev","blurb":"Open Source Package Vulnerabilities"},{"name":"GitHub Advisory Database","url":"https://github.com/advisories","host":"github.com","blurb":"Dependency Vulnerability Records"},{"name":"Zero Day Initiative","url":"https://www.zerodayinitiative.com/advisories/published/","host":"zerodayinitiative.com","blurb":"Coordinated Disclosure Advisories"},{"name":"OpenCVE","url":"https://www.opencve.io/","host":"opencve.io","blurb":"CVE Alerting by Vendor & Product"},{"name":"CVE Crowd","url":"https://cvecrowd.com/","host":"cvecrowd.com","blurb":"CVEs Being Discussed on Social Platforms"},{"name":"FIRST","url":"https://www.first.org/cvss/calculator/4-0","host":"first.org","blurb":"CVSS v4.0 Calculator"},{"name":"0day \"In the Wild\"","url":"https://docs.google.com/spreadsheets/d/1lkNJ0uQwbeC1ZTRrxdtuPLCIl7mlUreoKfSIgajnSyY/view#gid=0","host":"docs.google.com","blurb":"Tracked 0-Day Exploitation Spreadsheet"},{"name":"Full Disclosure","url":"https://seclists.org/fulldisclosure/","host":"seclists.org","blurb":"Public Vulnerability Disclosure Mailing List"},{"name":"Mappings Explorer","url":"https://center-for-threat-informed-defense.github.io/mappings-explorer/external/kev/","host":"center-for-threat-informed-defense.github.io","blurb":"CISA KEV Mapped to ATT&CK"}]},{"name":"Dark Web & Exposure Monitoring","links":[{"name":"Have I Been Pwned","url":"https://haveibeenpwned.com/DomainSearch","host":"haveibeenpwned.com","blurb":"Domain-Wide Breach Exposure Check"},{"name":"DeHashed","url":"https://dehashed.com/","host":"dehashed.com","blurb":"Information Breach Checker"},{"name":"Intelligence X","url":"https://intelx.io/","host":"intelx.io","blurb":"Leak, Paste & Darknet Search"},{"name":"LeakIX","url":"https://leakix.net/","host":"leakix.net","blurb":"Exposed Service & Leak Indexing"},{"name":"IACA","url":"https://iaca-darkweb-tools.com/","host":"iaca-darkweb-tools.com","blurb":"Dark Web Search Tool Collection"},{"name":"dark.fail","url":"https://dark.fail/","host":"dark.fail","blurb":"Onion Site Uptime & Phishing Verification"},{"name":"Onion Tree","url":"https://oniontree.org/","host":"oniontree.org","blurb":"Verified Onion Service Directory"},{"name":"Ahmia","url":"https://ahmia.fi/","host":"ahmia.fi","blurb":"Tor Hidden Service Search Engine"},{"name":"DarknetDaily","url":"https://darknetdaily.com/","host":"darknetdaily.com","blurb":"Darknet Market & Forum News"},{"name":"GitHub - apurvsinghgautam/dark-web-osint-tools","url":"https://github.com/apurvsinghgautam/dark-web-osint-tools","host":"github.com","blurb":"Dark Web OSINT Tooling"},{"name":"GitHub - fastfire/deepdarkCTI","url":"https://github.com/fastfire/deepdarkCTI","host":"github.com","blurb":"CTI Sources from the Deep & Dark Web"},{"name":"GitHub - misterch0c/CrimeBoards","url":"https://github.com/misterch0c/CrimeBoards","host":"github.com","blurb":"Criminal Forum Index"},{"name":"GitHub - MikeMeliz/TorCrawl.py","url":"https://github.com/MikeMeliz/TorCrawl.py","host":"github.com","blurb":"Onion Site Crawler"},{"name":"Tor Project","url":"https://www.torproject.org/download/","host":"torproject.org","blurb":"Browser for Onion Service Access"},{"name":"Tails","url":"https://tails.net/","host":"tails.net","blurb":"Amnesic OS for Safe Darknet Research"},{"name":"Tor Metrics","url":"https://metrics.torproject.org/rs.html","host":"metrics.torproject.org","blurb":"Relay & Exit Node Search"},{"name":"KeePass","url":"https://keepass.info/","host":"keepass.info","blurb":"Sock Puppet Identity & Credential Management"}]},{"name":"Internet Scanning & Attack Surface","links":[{"name":"Shodan","url":"https://www.shodan.io/","host":"shodan.io","blurb":"All-purposes Internet Scanner"},{"name":"Shodan Terminal","url":"https://terminal.shodan.io/","host":"terminal.shodan.io","blurb":"Command-Line Shodan Client"},{"name":"Censys","url":"https://search.censys.io/","host":"search.censys.io","blurb":"All-purposes Internet Scanner"},{"name":"Netlas","url":"https://app.netlas.io/responses/","host":"app.netlas.io","blurb":"IP/Domain/HTTP Response/Certificate Lookups"},{"name":"FOFA","url":"https://fofa.info/","host":"fofa.info","blurb":"Asset Fingerprint Search Engine"},{"name":"PublicWWW","url":"https://publicwww.com/","host":"publicwww.com","blurb":"Website Source Code Search Engine"},{"name":"grep.app","url":"https://grep.app/","host":"grep.app","blurb":"Source Code Search Engine"},{"name":"GitHub - trufflesecurity/trufflehog","url":"https://github.com/trufflesecurity/trufflehog","host":"github.com","blurb":"Leaked Secret Detection"},{"name":"WiGLE","url":"https://wigle.net/","host":"wigle.net","blurb":"Wireless Network Mapping"}]},{"name":"OSINT & Investigation","links":[{"name":"OSINT Framework","url":"https://osintframework.com/","host":"osintframework.com","blurb":"Tool Taxonomy by Investigation Type"},{"name":"IntelTechniques","url":"https://inteltechniques.com/tools/","host":"inteltechniques.com","blurb":"Search Tool Collection"},{"name":"Maltego","url":"https://www.maltego.com/","host":"maltego.com","blurb":"Link Analysis & Entity Graphing"},{"name":"SpiderFoot","url":"https://www.spiderfoot.net/","host":"spiderfoot.net","blurb":"Automated OSINT Collection"},{"name":"GitHub - laramies/theHarvester","url":"https://github.com/laramies/theHarvester","host":"github.com","blurb":"Domain & Email Enumeration"},{"name":"WhatsMyName","url":"https://whatsmyname.app/","host":"whatsmyname.app","blurb":"Username Enumeration Across Platforms"},{"name":"Epieos","url":"https://epieos.com/","host":"epieos.com","blurb":"Email & Phone Reverse Lookup"},{"name":"hunter.io","url":"https://hunter.io/","host":"hunter.io","blurb":"Email Address Finder"},{"name":"Wayback Machine","url":"https://web.archive.org/","host":"web.archive.org","blurb":"Historic Page Snapshots"},{"name":"archive.today","url":"https://archive.ph/","host":"archive.ph","blurb":"On-Demand Page Archiving"},{"name":"ExifTool","url":"https://exiftool.org/","host":"exiftool.org","blurb":"File & Image Metadata Extraction"},{"name":"GitHub - cipher387/osint_stuff_tool_collection","url":"https://github.com/cipher387/osint_stuff_tool_collection","host":"github.com","blurb":"Several Hundred Online OSINT Tools"},{"name":"GitHub - m00s3c/awesome-breach-intelligence","url":"https://github.com/m00s3c/awesome-breach-intelligence","host":"github.com","blurb":"Data Breach Lookup Tool List"},{"name":"GitHub - Jieyab89/OSINT-Cheat-sheet","url":"https://github.com/Jieyab89/OSINT-Cheat-sheet","host":"github.com","blurb":"OSINT Tools, Wikis & Datasets"},{"name":"GitHub - tjnull/TJ-OSINT-Notebook","url":"https://github.com/tjnull/TJ-OSINT-Notebook/tree/main/Raw%20Markdown","host":"github.com","blurb":"Raw Markdown OSINT Notes"},{"name":"GitHub - malleVF","url":"https://github.com/malleVF/Threat-Research-with-Obsidian-for-SOC-Analysts","host":"github.com","blurb":"Enrich IP/Domain Investigations with OSINT in Obsidian"},{"name":"Open-source Projects","url":"https://www.opensourceprojects.dev/post/36bc4408-33b8-464f-a7d3-fc28e48ae0f6","host":"opensourceprojects.dev","blurb":"Unified Tracker for Jets, Vessels & Satellites"},{"name":"Tesari AI","url":"https://tesari.ai/product","host":"tesari.ai","blurb":"AI Copilot for OSINT Investigation"},{"name":"District 4 Labs","url":"https://www.district4labs.com/","host":"district4labs.com","blurb":"OSINT Data for Investigations & Intel"}]},{"name":"Threat Intelligence Platforms (TIPs)","links":[{"name":"MISP","url":"https://www.misp-project.org/","host":"misp-project.org","blurb":"Open Source Threat Intelligence Platform"},{"name":"OpenCTI","url":"https://filigran.io/solutions/open-cti/","host":"filigran.io","blurb":"STIX-Native Knowledge Management Platform"},{"name":"TheHive","url":"https://thehive-project.org/","host":"thehive-project.org","blurb":"Case Management for IR & CTI"},{"name":"Cortex","url":"https://strangebee.com/cortex/","host":"strangebee.com","blurb":"Observable Analysis & Enrichment Engine"},{"name":"Yeti","url":"https://yeti-platform.io/","host":"yeti-platform.io","blurb":"Lightweight TIP for IoC & TTP Storage"},{"name":"GitHub - MISP/misp-galaxy","url":"https://github.com/MISP/misp-galaxy","host":"github.com","blurb":"Actor & Malware Clustering Data"},{"name":"Oasis Open","url":"https://oasis-open.github.io/cti-stix-visualization/","host":"oasis-open.github.io","blurb":"STIX Visualizer"},{"name":"GitHub - dessertlab/CTI-HAL","url":"https://github.com/dessertlab/CTI-HAL","host":"github.com","blurb":"Human-in-the-Loop CTI Extraction"},{"name":"GitHub - nox-project/nox-framework","url":"https://github.com/nox-project/nox-framework","host":"github.com","blurb":"OSINT/CTI Identity Pivoting Framework"},{"name":"GitHub - JoasASantos/RTOps-Management-Platform","url":"https://github.com/JoasASantos/RTOps-Management-Platform","host":"github.com","blurb":"Red/Threat Ops Management Platform"}]},{"name":"Reporting & Analytic Tradecraft","links":[{"name":"CTI Blueprints","url":"https://center-for-threat-informed-defense.github.io/cti-blueprints/","host":"center-for-threat-informed-defense.github.io","blurb":"Report Templates & Authoring Tool"},{"name":"Fabric","url":"https://blackstork.io/fabric","host":"blackstork.io","blurb":"Report Automation as Code"},{"name":"ThreatNote","url":"https://threatnote.io/","host":"threatnote.io","blurb":"Intelligence Requirement Tracking"},{"name":"ICD 203","url":"https://www.dni.gov/files/documents/ICD/ICD%20203%20Analytic%20Standards.pdf","host":"dni.gov","blurb":"Analytic Standards & Confidence Language"},{"name":"Heuer","url":"https://www.cia.gov/static/9a5f1162fd0932c29bfed1c030edf4ae/Pyschology-of-Intelligence-Analysis.pdf","host":"cia.gov","blurb":"Psychology of Intelligence Analysis"},{"name":"SANS","url":"https://www.sans.org/posters/cti-cheat-sheet-v1/","host":"sans.org","blurb":"CTI Cheat Sheet"},{"name":"SANS FOR578","url":"https://www.sans.org/cyber-security-courses/cyber-threat-intelligence/","host":"sans.org","blurb":"Cyber Threat Intelligence Course Outline"},{"name":"TΞLΞMΞTRY","url":"https://t3l3m3try.medium.com/cyber-threat-intelligence-communication-reporting-techniques-75ec41a0a098","host":"t3l3m3try.medium.com","blurb":"CTI Communication & Reporting Techniques"},{"name":"GitHub - t3l3m3try/Obsidian_Templates","url":"https://github.com/t3l3m3try/Obsidian_Templates","host":"github.com","blurb":"Obsidian Templates for CTI"},{"name":"Orange Cyberdefense","url":"https://orange-cyberdefense.github.io/ocd-mindmaps/img/mindmap_ad_dark_classic_2025.03.excalidraw.svg","host":"orange-cyberdefense.github.io","blurb":"Active Directory Attack Mindmap"}]},{"name":"Technical References","links":[{"name":"Wikipedia","url":"https://de.wikipedia.org/wiki/HTTP-Statuscode#Liste_der_HTTP-Statuscodes","host":"de.wikipedia.org","blurb":"HTTP Status Codes"},{"name":"Wikipedia","url":"https://en.wikipedia.org/wiki/List_of_Internet_top-level_domains","host":"en.wikipedia.org","blurb":"List of Top-Level Domains"},{"name":"Wikipedia","url":"https://en.wikipedia.org/wiki/List_of_file_signatures","host":"en.wikipedia.org","blurb":"Common File Headers/Signatures"},{"name":"Wikipedia","url":"https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers","host":"en.wikipedia.org","blurb":"List of TCP and UDP Port Numbers"},{"name":"STRONTIC xCyclopedia","url":"https://strontic.github.io/xcyclopedia/","host":"strontic.github.io","blurb":"Low-Level Encyclopedia for Executables"},{"name":"Microsoft Win32 API","url":"https://learn.microsoft.com/en-us/windows/win32/api/","host":"learn.microsoft.com","blurb":"Windows API Documentation"},{"name":"pinvoke.net","url":"http://www.pinvoke.net/","host":"pinvoke.net","blurb":"Windows API Documentation & Access Examples"},{"name":"Ultimate Windows Security","url":"https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/default.aspx","host":"ultimatewindowssecurity.com","blurb":"Windows Event Log Encyclopedia"},{"name":"user-agents.net","url":"https://user-agents.net/","host":"user-agents.net","blurb":"Known User Agents Documentation"},{"name":"explainshell.com","url":"https://explainshell.com/","host":"explainshell.com","blurb":"Unix Command-Line Argument Help"},{"name":"Syscall.sh","url":"https://syscall.sh/","host":"syscall.sh","blurb":"Linux System Calls Reference"},{"name":"GitHub - j00ru/windows-syscalls","url":"https://github.com/j00ru/windows-syscalls","host":"github.com","blurb":"Windows System Call Tables"},{"name":"GitHub - ikermit/11Syscalls","url":"https://github.com/ikermit/11Syscalls","host":"github.com","blurb":"Windows 11 Syscall Table"}]},{"name":"Learning, Labs & Skill-Building","links":[{"name":"TCM Security","url":"https://certifications.tcm-sec.com/download-resources/","host":"certifications.tcm-sec.com","blurb":"Free Certification Study Resources"},{"name":"GitHub - CarterPerez-dev/Cybersecurity-Projects","url":"https://github.com/CarterPerez-dev/Cybersecurity-Projects","host":"github.com","blurb":"70 Gamified Cybersecurity Projects"},{"name":"GitHub - mikeroyal/Digital-Forensics-Guide","url":"https://github.com/mikeroyal/Digital-Forensics-Guide","host":"github.com","blurb":"Digital Forensics Learning Guide"},{"name":"GitHub - frankwxu/digital-forensics-lab","url":"https://github.com/frankwxu/digital-forensics-lab/tree/main","host":"github.com","blurb":"Free Hands-On Digital Forensics Labs"},{"name":"CybersecTools","url":"https://cybersectools.com/popular","host":"cybersectools.com","blurb":"Most Popular Cybersecurity Tools"},{"name":"Monolith Forensics","url":"https://www.monolithforensics.com/free-tools","host":"monolithforensics.com","blurb":"Free DFIR Tools"}]},{"name":"AI-Assisted CTI & Agent Security","links":[{"name":"GitHub - 7onez/cti-expert","url":"https://github.com/7onez/cti-expert","host":"github.com","blurb":"CTI & OSINT Analysis Skill for Claude Code"},{"name":"GitHub - secureagentics/Adrian","url":"https://github.com/secureagentics/Adrian","host":"github.com","blurb":"Runtime AI Agent Security Monitor"},{"name":"GitHub - wong2/awesome-mcp-servers","url":"https://github.com/wong2/awesome-mcp-servers","host":"github.com","blurb":"Curated List of MCP Servers"}]},{"name":"Curated Resource Lists","links":[{"name":"GitHub - BushidoUK/Open-source-tools-for-CTI","url":"https://github.com/BushidoUK/Open-source-tools-for-CTI","host":"github.com","blurb":"Open Source Tooling by Intelligence Level"},{"name":"BushidoUK","url":"https://github.com/BushidoUK/Open-source-tools-for-CTI/blob/master/OPSEC%20essentials.md","host":"github.com","blurb":"OPSEC Essentials for CTI Research"},{"name":"BushidoUK","url":"https://github.com/BushidoUK/Open-source-tools-for-CTI/blob/master/ICS-OT.md","host":"github.com","blurb":"ICS/OT Threat Intelligence Resources"},{"name":"BushidoUK","url":"https://github.com/BushidoUK/Open-source-tools-for-CTI/blob/master/Mobile.md","host":"github.com","blurb":"Mobile Threat Intelligence Resources"},{"name":"BushidoUK","url":"https://github.com/BushidoUK/Open-source-tools-for-CTI/blob/master/Certifications.md","host":"github.com","blurb":"CTI Certification & Training Index"},{"name":"GitHub - hslatman/awesome-threat-intelligence","url":"https://github.com/hslatman/awesome-threat-intelligence","host":"github.com","blurb":"Collection of CTI Tools & Resources"},{"name":"Curated Intelligence","url":"https://github.com/curated-intel","host":"github.com","blurb":"Community Trust Group Repositories"},{"name":"GitHub - cugu/awesome-forensics","url":"https://github.com/cugu/awesome-forensics","host":"github.com","blurb":"Digital Forensics Resource Collection"},{"name":"GitHub - meirwah/awesome-incident-response","url":"https://github.com/meirwah/awesome-incident-response","host":"github.com","blurb":"Incident Response Resource Collection"}]}]}];
+
+
+const FAV_KEY = "csb-favs-v1";
+
+/* Use-for labels: what a hunter/TI analyst opens this for */
+const KIND_ORDER = ["enrich","sandbox","infra","actor","feed","detect","vuln","osint","report","spec","code","lab"];
+const KIND_META = {
+  enrich: { label: "Enrich", tip: "Look up an IOC (hash, IP, URL, domain) for a verdict" },
+  sandbox: { label: "Sandbox", tip: "Detonate or inspect a malware sample" },
+  infra: { label: "Infra", tip: "Pivot DNS, certs, ASN, hosts, exposure" },
+  actor: { label: "Actor", tip: "Threat actor / group profiles and aliases" },
+  feed: { label: "Feed", tip: "Live IOC feeds, blocklists, ransomware claims" },
+  detect: { label: "Detect", tip: "Detections, hunts, Sigma/YARA, validation" },
+  vuln: { label: "Vuln", tip: "CVE, exploit, patch priority" },
+  osint: { label: "OSINT", tip: "People, orgs, social, geo, open-source recon" },
+  report: { label: "Report", tip: "Read reports, blogs, news for context" },
+  spec: { label: "Spec", tip: "Frameworks, standards, ATT&CK, STIX" },
+  code: { label: "Code", tip: "GitHub repos, scripts, matrices" },
+  lab: { label: "Lab", tip: "Training, CTF, labs, skill-building" },
+};
+
+const state = {
+  q: "",
+  pillar: "all",
+  cat: null,
+  kind: "all",
+  starred: false,
+  favs: new Set(JSON.parse(localStorage.getItem(FAV_KEY) || "[]")),
+};
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+
+function hasWord(hay, words) {
+  return words.some(w => {
+    const re = new RegExp(`(?:^|[^a-z0-9])${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:[^a-z0-9]|$)`);
+    return re.test(hay);
+  });
+}
+
+function kindOf(link) {
+  const host = (link.host || "").toLowerCase();
+  const url = (link.url || "").toLowerCase();
+  const folder = (link.category || "").toLowerCase();
+  const pillar = (link.pillar || "").toLowerCase();
+  const name = (link.name || "").toLowerCase();
+  const blurb = (link.blurb || "").toLowerCase();
+  const hay = `${name} ${blurb} ${folder} ${host}`;
+
+  function hostHit(list) {
+    return list.some(h => host === h || host.endsWith("." + h));
+  }
+
+  // High-confidence hosts first
+  const hosts = {
+    enrich: ["virustotal.com","abuseipdb.com","urlscan.io","urlvoid.com","ipvoid.com","greynoise.io","pulsedive.com","opentip.kaspersky.com","threatminer.org","talosintelligence.com","spamhaus.org","scamadviser.com","ipqualityscore.com","polyswarm.io","metadefender.opswat.com","filescan.io","intezer.com","emailrep.io","haveibeenpwned.com","dehashed.com","intelx.io","hunter.io","snov.io","clearbit.com","dnslytics.com","mxtoolbox.com","whatismyipaddress.com","ipinfo.io","db-ip.com","transparencyreport.google.com","exchange.xforce.ibmcloud.com","platform.socradar.com","threatbook.io","alienvault.com"],
+    sandbox: ["any.run","tria.ge","joesandbox.com","app.any.run","threatfeed.vmray.com","dracoeye.com","hybrid-analysis.com","labs.inquest.net","capesandbox.com","cuckoo.cert.ee"],
+    infra: ["shodan.io","censys.io","securitytrails.com","crt.sh","dnsdumpster.com","viewdns.info","robtex.com","bgp.he.net","bgp.tools","passivedns.mnemonic.no","validin.com","silentpush.com","who.is","whoxy.com","ssllabs.com","fofa.info","netlas.io","publicwww.com","radar.cloudflare.com","cdnplanet.com","builtwith.com","wappalyzer.com","fullhunt.io","binaryedge.io","zoomeye.org","hunter.how","onyphe.io","spyse.com","domaintools.com","portquiz.net","requestinspector.com","securityheaders.com"],
+    feed: ["abuse.ch","threatfox.abuse.ch","urlhaus.abuse.ch","feodotracker.abuse.ch","sslbl.abuse.ch","bazaar.abuse.ch","hunting.abuse.ch","ransomware.live","ransomwatch.telemetry.ltd","ransomlook.io","ransom.wiki","otx.alienvault.com","openphish.com","phishtank.com"],
+    actor: ["adversary.crowdstrike.com","apt.etda.or.th","malpedia.caad.fkie.fraunhofer.de"],
+    vuln: ["nvd.nist.gov","cve.org","cwe.mitre.org","exploit-db.com","vulners.com","vuldb.com","osv.dev","opencve.io","cvecrowd.com","zerodayinitiative.com","msrc.microsoft.com","first.org","kev.circl.lu","epss.cyentia.com"],
+    detect: ["sigmahq.io","atomicredteam.io","suricata.io","yara.readthedocs.io","car.mitre.org","threathunterplaybook.com","zeek.org","canarytokens.org","gtfobins.github.io","lolbas-project.github.io","hijacklibs.net","filesec.io","wadcoms.github.io","circl.lu","threatnote.io","misp-project.org"],
+    tip: ["misp-project.org","filigran.io","thehive-project.org","yeti-platform.io"],
+    spec: ["attack.mitre.org","oasis-open.github.io","docs.oasis-open.org","nist.gov","cisecurity.org","d3fend.mitre.org","capec.mitre.org","engage.mitre.org","verisframework.org"],
+    report: ["securelist.com","research.checkpoint.com","welivesecurity.com","blog.malwarebytes.com","krebsonsecurity.com","thehackernews.com","bleepingcomputer.com","darkreading.com","unit42.paloaltonetworks.com","blog.talosintelligence.com","elastic.co"],
+    lab: ["ctftime.org","picoctf.org","overthewire.org","hacker101.com","tryhackme.com","hackthebox.com","pentesterlab.com","cyberdefenders.org","letsdefend.io"],
+    osint: ["whatsmyname.app","namechk.com","osintframework.com","osintcombine.com","inteltechniques.com","social-searcher.com","pipl.com","spokeo.com","truepeoplesearch.com","wigle.net","radarbox24.com","flightaware.com","planefinder.net","ads-b.nl"],
+  };
+
+  for (const [k, list] of Object.entries(hosts)) {
+    if (hostHit(list)) {
+      if (k === "tip") return "detect";
+      return k;
+    }
+  }
+
+  if (host === "github.com" || host.endsWith(".github.io") || url.includes("github.com/")) {
+    if (hasWord(hay, ["sigma","yara","detection","hunt","atomic","rule","lolbas","gtfo"])) return "detect";
+    if (hasWord(hay, ["apt","actor","ransomware","matrix","alias","threat-matrix"])) return "actor";
+    if (hasWord(hay, ["osint","recon","username"])) return "osint";
+    if (hasWord(hay, ["cve","exploit","vuln"])) return "vuln";
+    return "code";
+  }
+
+  // Folder signals: category only (never whole OSINT pillar)
+  if (/sandbox|malware analysis|sample|detonat/.test(folder)) return "sandbox";
+  if (/file & malware/.test(folder) && hasWord(hay, ["sandbox","detonate","sample","triage","bazaar","malshare"])) return "sandbox";
+  if (/ip, url|domain analysis|email security|phishing|reputation|hash/.test(folder)) return "enrich";
+  if (/dns|certificate|scanning|attack surface|web & network|whois|bgp|asn|passive dns/.test(folder)) return "infra";
+  if (/ioc|feed|ransomware intelligence|blocklist|leak/.test(folder)) return "feed";
+  if (/adversary|actor|apt group|threat group|malpedia/.test(folder)) return "actor";
+  if (/detection|hunting|sigma|yara|siem|ttp & technique|lolbas|gtfo|purple team/.test(folder)) return "detect";
+  if (/vulnerabilit|exploit|cve|kev|patch/.test(folder)) return "vuln";
+  if (/training|ctf|lab|learning|skill|course/.test(folder)) return "lab";
+  if (/framework|standard|governance|stix|taxii|att&ck|methodology|compliance/.test(folder)) return "spec";
+  // OSINT folders before generic news/blog (OSINT has many "News Topics" folders)
+  if (/social media|people search|persona|username|breach|dark web|image|sat |geo|mapping|flight|vessel|vehicle|country specific|area & event|news topics|academic sources|transport|wireless|radio|camera/.test(folder)) return "osint";
+  if (/news|blog|report|vendor threat|monthly threat|situational|geopolitic|advisory/.test(folder)) return "report";
+  if (/tip|threat intelligence platform|reporting/.test(folder)) return "detect";
+
+  // Content signals (word boundaries; avoid "reporter" matching "report")
+  if (hasWord(hay, ["sandbox","detonate","malware sample","any.run","triage"])) return "sandbox";
+  if (hasWord(hay, ["blocklist","ioc feed","threat feed","leak site","ransomware claim"])) return "feed";
+  if (hasWord(hay, ["cve","cvss","exploit-db","epss","patch","vulnerability"])) return "vuln";
+  if (hasWord(hay, ["att&ck","d3fend","stix","taxii","nist","framework","kill chain","capec"])) return "spec";
+  if (hasWord(hay, ["sigma","yara","detection rule","hunt query","atomic red","lolbas","gtfobins"])) return "detect";
+  if (hasWord(hay, ["threat actor","apt group","adversary profile","actor alias"])) return "actor";
+  if (hasWord(hay, ["passive dns","certificate transparency","asn","bgp","subdomain","shodan","censys","cdn","port test"])) return "infra";
+  if (hasWord(hay, ["reputation","abuse score","multi-av","url scan","whois lookup","hash lookup","safe browsing","x-force"])) return "enrich";
+  if (hasWord(hay, ["username","sock puppet","breach check","people search","flight tracker","vessel","satellite"])) return "osint";
+  if (hasWord(hay, ["ctf","training","lab exercise","certification study","tryhackme","hackthebox"])) return "lab";
+  if (hasWord(hay, ["threat report","weekly threat","blog post","news coverage","advisory","security blog"])) return "report";
+  if (hasWord(hay, ["code search","source code","grep.app","searchcode"])) return "code";
+
+  // Pillar fallbacks last
+  if (/training|ctf/.test(pillar)) return "lab";
+  if (/penetration|reverse engineering/.test(pillar)) return "detect";
+  if (/technical resources/.test(pillar)) return "spec";
+  if (/threat hunting|dfir/.test(pillar)) return "detect";
+  if (/web & network/.test(pillar)) return "infra";
+  if (/ip, url|email|file & malware/.test(pillar)) return "enrich";
+  if (/cyber threat intelligence/.test(pillar)) {
+    if (/blog|monthly|report|news|situational|geopolitic/.test(folder)) return "report";
+    return "enrich";
+  }
+  if (/open source intelligence|osint/.test(pillar)) return "osint";
+
+  return "enrich";
+}
+
+function flat() {
+  const out = [];
+  DATA.forEach((p, pi) => {
+    p.categories.forEach((c, ci) => {
+      c.links.forEach(l => {
+        const row = { ...l, pillar: p.name, category: c.name, pi, ci };
+        row.kind = kindOf(row);
+        out.push(row);
+      });
+    });
+  });
+  return out;
+}
+
+function saveFavs() {
+  localStorage.setItem(FAV_KEY, JSON.stringify([...state.favs]));
+}
+
+function favicon(host, url) {
+  let d = host;
+  if (!d) {
+    try { d = new URL(url).hostname; } catch { d = ""; }
+  }
+  if (!d) return "";
+  return "https://www.google.com/s2/favicons?domain=" + encodeURIComponent(d) + "&sz=32";
+}
+
+function folderIcon() {
+  return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>';
+}
+
+function match(link) {
+  if (state.starred && !state.favs.has(link.url)) return false;
+  if (state.kind !== "all" && link.kind !== state.kind) return false;
+  if (state.pillar !== "all" && link.pillar !== state.pillar) return false;
+  if (state.cat) {
+    const [pi, ci] = state.cat.split(":").map(Number);
+    if (link.pi !== pi || link.ci !== ci) return false;
+  }
+  const q = state.q.trim().toLowerCase();
+  if (!q) return true;
+  const meta = KIND_META[link.kind];
+  const hay = [link.name, link.blurb, link.host, link.url, link.category, link.pillar, link.kind, meta?.label, meta?.tip].join(" ").toLowerCase();
+  return q.split(/\s+/).every(t => hay.includes(t));
+}
+
+function renderFolders() {
+  const el = document.getElementById("folders");
+  const total = flat().length;
+  let html = `<button type="button" class="folder ${state.pillar === "all" && !state.cat ? "on" : ""}" data-all="1">${folderIcon()}<span class="label">All bookmarks</span><span class="n">${total}</span></button>`;
+  DATA.forEach((p, pi) => {
+    const n = p.categories.reduce((a, c) => a + c.links.length, 0);
+    const open = state.pillar === p.name;
+    html += `<div>
+      <button type="button" class="folder ${open && !state.cat ? "on" : ""}" data-pillar="${esc(p.name)}">${folderIcon()}<span class="label">${esc(p.name)}</span><span class="n">${n}</span></button>`;
+    if (open) {
+      html += "<ul class=\"sub\">" + p.categories.map((c, ci) =>
+        `<li><button type="button" class="${state.cat === pi + ":" + ci ? "on" : ""}" data-cat="${pi}:${ci}"><span class="label">${esc(c.name)}</span><span class="n">${c.links.length}</span></button></li>`
+      ).join("") + "</ul>";
+    }
+    html += "</div>";
+  });
+  el.innerHTML = html;
+  el.querySelector("[data-all]")?.addEventListener("click", () => { state.pillar = "all"; state.cat = null; paint(); });
+  el.querySelectorAll("[data-pillar]").forEach(btn => btn.addEventListener("click", () => {
+    state.pillar = btn.dataset.pillar; state.cat = null; paint();
+  }));
+  el.querySelectorAll("[data-cat]").forEach(btn => btn.addEventListener("click", () => {
+    state.cat = btn.dataset.cat;
+    state.pillar = DATA[+state.cat.split(":")[0]].name;
+    paint();
+  }));
+}
+
+function renderRows() {
+  const links = flat().filter(match);
+  const tbody = document.getElementById("rows");
+  const empty = document.getElementById("empty");
+  let title = "All bookmarks";
+  if (state.starred) title = "Starred";
+  else if (state.cat) {
+    const [pi, ci] = state.cat.split(":").map(Number);
+    title = DATA[pi].categories[ci].name;
+  } else if (state.pillar !== "all") title = state.pillar;
+  document.getElementById("title").innerHTML = esc(title) + ' <span class="count">(' + links.length + ")</span>";
+  if (!links.length) {
+    tbody.innerHTML = "";
+    empty.hidden = false;
+    return;
+  }
+  empty.hidden = true;
+  tbody.innerHTML = links.map(l => {
+    const starred = state.favs.has(l.url);
+    const src = favicon(l.host, l.url);
+    return `<tr>
+      <td><div class="name-cell">${src ? `<img src="${esc(src)}" alt="" width="16" height="16" loading="lazy">` : ""}<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.name)}</a></div></td>
+      <td class="blurb">${esc(l.blurb || "")}</td>
+      <td class="url"><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.host || l.url)}</a></td>
+      <td class="kind" title="${esc((KIND_META[l.kind] || {}).tip || "")}">${esc((KIND_META[l.kind] || {}).label || l.kind)}</td>
+      <td><button type="button" class="star ${starred ? "on" : ""}" data-url="${esc(l.url)}">${starred ? "★" : "☆"}</button></td>
+    </tr>`;
+  }).join("");
+}
+
+function paint() {
+  renderFolders();
+  renderRows();
+  document.getElementById("starredBtn").classList.toggle("on", state.starred);
+}
+
+document.getElementById("rows").addEventListener("click", e => {
+  const btn = e.target.closest(".star");
+  if (!btn) return;
+  const url = btn.dataset.url;
+  if (state.favs.has(url)) state.favs.delete(url);
+  else state.favs.add(url);
+  saveFavs();
+  paint();
+});
+
+document.getElementById("q").addEventListener("input", e => {
+  state.q = e.target.value;
+  renderRows();
+});
+
+document.getElementById("starredBtn").addEventListener("click", () => {
+  state.starred = !state.starred;
+  paint();
+});
+
+document.addEventListener("keydown", e => {
+  const q = document.getElementById("q");
+  if (e.key === "/" && document.activeElement !== q) {
+    e.preventDefault();
+    q.focus();
+    q.select();
+  }
+});
+
+(function initKindFilter() {
+  const sel = document.getElementById("kindFilter");
+  const counts = Object.fromEntries(KIND_ORDER.map(k => [k, 0]));
+  flat().forEach(l => { if (counts[l.kind] != null) counts[l.kind]++; });
+  KIND_ORDER.forEach(k => {
+    const m = KIND_META[k];
+    const opt = document.createElement("option");
+    opt.value = k;
+    opt.textContent = `${m.label} (${counts[k]})`;
+    opt.title = m.tip;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener("change", () => {
+    state.kind = sel.value;
+    renderRows();
+  });
+})();
+
+(function initTheme() {
+  const KEY = "csb-theme";
+  const btn = document.getElementById("themeBtn");
+  function current() {
+    const saved = localStorage.getItem(KEY);
+    if (saved === "light" || saved === "dark") return saved;
+    return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  function apply(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem(KEY, theme);
+    btn.textContent = theme === "dark" ? "Light" : "Dark";
+    btn.title = theme === "dark" ? "Switch to light theme" : "Switch to dark theme";
+  }
+  apply(current());
+  btn.addEventListener("click", () => {
+    apply(current() === "dark" ? "light" : "dark");
+  });
+})();
+
+paint();
+</script>
+</body>
+</html>
