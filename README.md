@@ -4,6 +4,10 @@ Welcome — this is a browser bookmark file (`cti-bookmarks.html`) collecting op
 
 For day-to-day hunting, you can also open [`cti-bookmarks-console.html`](cti-bookmarks-console.html) in a browser: same curated set, with folder navigation, search, star list, light/dark theme, and a **Use for** filter aimed at threat hunters (enrich, sandbox, detect, feed, and so on). Not a generic mega-bookmark dump.
 
+Console extras: **Export / Import** starred bookmarks as JSON, keyboard shortcuts (`/` search, `Esc` clear, `d` theme, `s` starred, `?` help), and basic accessibility labels.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) to add links (keep the bookmark file and console in sync). Licensed under [MIT](LICENSE).
+
 ## Index ℹ️
 
 This collection is organised into four top-level folders that map onto the different intelligence levels and needs of a CTI analyst: **Operational**, **Tactical**, and **Strategic** intelligence, plus a **Tools** folder for the day-to-day analysis platforms that cut across all three. While all three intelligence levels are essential for effective decision-making, they differ in focus, scope, timeframe, and intended audience — reflecting the hierarchical levels and operational requirements of the organisation.
